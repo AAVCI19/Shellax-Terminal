@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -415,25 +416,62 @@ int process_command(struct command_t *command, int *pipefd_r) {
       close(pipefd[0]);
       dup2(pipefd[1], STDOUT_FILENO);
       close(pipefd[1]);
-    }
-    assert(!((pipefd_r != NULL) && is_piped));
 
-    if (strcmp(command->name, "uniq") == 0) {
-      char buf[BUFSIZ];
-      int n_bytes;
-      n_bytes = read(pipefd_r[0], &buf, sizeof(buf));
-      printf("%s", buf);
-    
-      
-      // if (command->arg_count > 0) {
+      assert(!((pipefd_r != NULL) && is_piped));
 
-      //   if (!strcmp(command->args[0], "c") ||
-      //       !strcmp(command->args[0], "--count")) {
-          
-      //   }
+      if (strcmp(command->name, "uniq") == 0) {
+        char buf[BUFSIZ];
+        int n_bytes;
+        char *words[BUFSIZ];
+        int i = 0;
+        while ((n_bytes = read(pipefd_r[0], &buf, sizeof(buf))) > 0) {
+          words[i++] = buf;
+        }
 
-      // }
-      return SUCCESS;
+        for (int x = 0; x < BUFSIZ; x++) {
+          int y;
+          for (y = 0; y < BUFSIZ; y++) {
+            if (!strcmp(words[x], words[y])) {
+              break;
+            }
+          }
+          if (x == y)
+            printf("%s", words[x]);
+        }
+
+        char *words_count[BUFSIZ];
+
+        if (command->arg_count > 0) {
+
+          if (!strcmp(command->args[0], "-c") ||
+              !strcmp(command->args[0], "--count")) {
+            int i;
+
+            for (i = 0; i < BUFSIZ; i++) {
+              int count = 1;
+              int j;
+              for (j = 0; j < BUFSIZ; j++) {
+                if (!strcmp(words[i], words[j])) {
+                  count++;
+                }
+              }
+              // printf("%d", count);
+              if (i == j) {
+                char *num;
+                if (asprintf(&num, "%d", count) == -1) {
+                  fprintf(stderr, "Num couldnt be converted!");
+                }
+                words_count[i] = strcat(strcpy(buf, num), words[i]);
+              }
+            }
+            for (i = 0; i < BUFSIZ; i++) {
+              printf("%s\n", words_count[i]);
+            }
+          }
+        }
+        printf("\n");
+        return SUCCESS;
+      }
     }
 
     char *path1 = "/usr/bin/";
@@ -468,7 +506,7 @@ int process_command(struct command_t *command, int *pipefd_r) {
     }
 
     if (!command->background) {
-      // wait(NULL);
+      //wait(NULL);
       return SUCCESS;
 
     } else {
