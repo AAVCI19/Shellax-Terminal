@@ -14,13 +14,15 @@
 
 const char *sysname = "shellax";
 
-enum return_codes {
+enum return_codes
+{
   SUCCESS = 0,
   EXIT = 1,
   UNKNOWN = 2,
 };
 
-struct command_t {
+struct command_t
+{
   char *name;
   bool background;
   bool auto_complete;
@@ -34,7 +36,8 @@ struct command_t {
  * Prints a command struct
  * @param struct command_t *
  */
-void print_command(struct command_t *command) {
+void print_command(struct command_t *command)
+{
   int i = 0;
   printf("Command: <%s>\n", command->name);
   printf("\tIs Background: %s\n", command->background ? "yes" : "no");
@@ -46,7 +49,8 @@ void print_command(struct command_t *command) {
   printf("\tArguments (%d):\n", command->arg_count);
   for (i = 0; i < command->arg_count; ++i)
     printf("\t\tArg %d: %s\n", i, command->args[i]);
-  if (command->next) {
+  if (command->next)
+  {
     printf("\tPiped to:\n");
     print_command(command->next);
   }
@@ -56,8 +60,10 @@ void print_command(struct command_t *command) {
  * @param  command [description]
  * @return         [description]
  */
-int free_command(struct command_t *command) {
-  if (command->arg_count) {
+int free_command(struct command_t *command)
+{
+  if (command->arg_count)
+  {
     for (int i = 0; i < command->arg_count; ++i)
       free(command->args[i]);
     free(command->args);
@@ -65,7 +71,8 @@ int free_command(struct command_t *command) {
   for (int i = 0; i < 3; ++i)
     if (command->redirects[i])
       free(command->redirects[i]);
-  if (command->next) {
+  if (command->next)
+  {
     free_command(command->next);
     command->next = NULL;
   }
@@ -77,7 +84,8 @@ int free_command(struct command_t *command) {
  * Show the command prompt
  * @return [description]
  */
-int show_prompt() {
+int show_prompt()
+{
   char cwd[1024], hostname[1024];
   gethostname(hostname, sizeof(hostname));
   getcwd(cwd, sizeof(cwd));
@@ -85,7 +93,13 @@ int show_prompt() {
   return 0;
 }
 
-typedef enum { IN = 0, OUT, APPEND, DIRECTION_MAX } DIRECTION;
+typedef enum
+{
+  IN = 0,
+  OUT,
+  APPEND,
+  DIRECTION_MAX
+} DIRECTION;
 
 /**
  * Parse a command string into a command struct
@@ -93,7 +107,8 @@ typedef enum { IN = 0, OUT, APPEND, DIRECTION_MAX } DIRECTION;
  * @param  command [description]
  * @return         0
  */
-int parse_command(char *buf, struct command_t *command) {
+int parse_command(char *buf, struct command_t *command)
+{
   const char *splitters = " \t"; // split at whitespace
   int index, len;
   len = strlen(buf);
@@ -111,10 +126,13 @@ int parse_command(char *buf, struct command_t *command) {
     command->background = true;
 
   char *pch = strtok(buf, splitters);
-  if (pch == NULL) {
+  if (pch == NULL)
+  {
     command->name = (char *)malloc(1);
     command->name[0] = 0;
-  } else {
+  }
+  else
+  {
     command->name = (char *)malloc(strlen(pch) + 1);
     strcpy(command->name, pch);
   }
@@ -124,7 +142,8 @@ int parse_command(char *buf, struct command_t *command) {
   int redirect_index;
   int arg_index = 0;
   char temp_buf[1024], *arg;
-  while (1) {
+  while (1)
+  {
     // tokenize input on splitters
     pch = strtok(NULL, splitters);
     if (!pch)
@@ -134,7 +153,7 @@ int parse_command(char *buf, struct command_t *command) {
     len = strlen(arg);
 
     if (len == 0)
-      continue; // empty arg, go for next
+      continue;                                          // empty arg, go for next
     while (len > 0 && strchr(splitters, arg[0]) != NULL) // trim left whitespace
     {
       arg++;
@@ -146,7 +165,8 @@ int parse_command(char *buf, struct command_t *command) {
       continue; // empty arg, go for next
 
     // piping to another command
-    if (strcmp(arg, "|") == 0) {
+    if (strcmp(arg, "|") == 0)
+    {
       struct command_t *c = malloc(sizeof(struct command_t));
       int l = strlen(pch);
       pch[l] = splitters[0]; // restore strtok termination
@@ -168,15 +188,19 @@ int parse_command(char *buf, struct command_t *command) {
     memset(command->redirects, 0, 3);
     if (arg[0] == '<')
       redirect_index = IN;
-    if (arg[0] == '>') {
-      if (len > 1 && arg[1] == '>') {
+    if (arg[0] == '>')
+    {
+      if (len > 1 && arg[1] == '>')
+      {
         redirect_index = APPEND;
         arg++;
         len--;
-      } else
+      }
+      else
         redirect_index = OUT;
     }
-    if (redirect_index != -1) {
+    if (redirect_index != -1)
+    {
       command->redirects[redirect_index] = malloc(len);
       strcpy(command->redirects[redirect_index], arg + 1);
       continue;
@@ -199,7 +223,8 @@ int parse_command(char *buf, struct command_t *command) {
   return 0;
 }
 
-void prompt_backspace() {
+void prompt_backspace()
+{
   putchar(8);   // go back 1
   putchar(' '); // write empty over
   putchar(8);   // go back 1 again
@@ -210,7 +235,8 @@ void prompt_backspace() {
  * @param  buf_size [description]
  * @return          [description]
  */
-int prompt(struct command_t *command) {
+int prompt(struct command_t *command)
+{
   int index = 0;
   char c;
   char buf[4096];
@@ -233,7 +259,8 @@ int prompt(struct command_t *command) {
 
   show_prompt();
   buf[0] = 0;
-  while (1) {
+  while (1)
+  {
     c = getchar();
     // printf("Keycode: %u\n", c); // DEBUG: uncomment for debugging
 
@@ -245,20 +272,23 @@ int prompt(struct command_t *command) {
 
     if (c == 127) // handle backspace
     {
-      if (index > 0) {
+      if (index > 0)
+      {
         prompt_backspace();
         index--;
       }
       continue;
     }
 
-    if (c == 27 || c == 91 || c == 66 || c == 67 || c == 68) {
+    if (c == 27 || c == 91 || c == 66 || c == 67 || c == 68)
+    {
       continue;
     }
 
     if (c == 65) // up arrow
     {
-      while (index > 0) {
+      while (index > 0)
+      {
         prompt_backspace();
         index--;
       }
@@ -296,8 +326,10 @@ int prompt(struct command_t *command) {
   return SUCCESS;
 }
 int process_command(struct command_t *command, int *pipefd);
-int main() {
-  while (1) {
+int main()
+{
+  while (1)
+  {
     struct command_t *command = malloc(sizeof(struct command_t));
     memset(command, 0, sizeof(struct command_t)); // set all bytes to 0
 
@@ -317,7 +349,8 @@ int main() {
   return 0;
 }
 
-int process_command(struct command_t *command, int *pipefd_r) {
+int process_command(struct command_t *command, int *pipefd_r)
+{
   int r;
   int pipefd[2];
   bool is_piped = command->next != NULL;
@@ -330,8 +363,10 @@ int process_command(struct command_t *command, int *pipefd_r) {
   if (strcmp(command->name, "exit") == 0)
     return EXIT;
 
-  if (strcmp(command->name, "cd") == 0) {
-    if (command->arg_count > 0) {
+  if (strcmp(command->name, "cd") == 0)
+  {
+    if (command->arg_count > 0)
+    {
       r = chdir(command->args[0]);
       if (r == -1)
         printf("-%s: %s: %s\n", sysname, command->name, strerror(errno));
@@ -375,14 +410,17 @@ int process_command(struct command_t *command, int *pipefd_r) {
 
     DIRECTION dir_mode = 1000;
     char *file_name;
-    for (int i = 0; i < DIRECTION_MAX; i++) {
-      if (command->redirects[i] != NULL) {
+    for (int i = 0; i < DIRECTION_MAX; i++)
+    {
+      if (command->redirects[i] != NULL)
+      {
         dir_mode = i;
         file_name = command->redirects[i];
       }
     }
     printf("exructing: %s\n", command->name);
-    switch (dir_mode) {
+    switch (dir_mode)
+    {
     case IN:
       int fd_in = open(file_name, O_RDONLY, 0);
       if (fd_in == -1)
@@ -406,12 +444,14 @@ int process_command(struct command_t *command, int *pipefd_r) {
       break;
     }
 
-    if (pipefd_r != NULL) {
+    if (pipefd_r != NULL)
+    {
       close(pipefd_r[1]);
       dup2(pipefd_r[0], STDIN_FILENO);
       close(pipefd_r[0]);
     }
-    if (is_piped) {
+    if (is_piped)
+    {
       printf("baasdada\n");
       close(pipefd[0]);
       dup2(pipefd[1], STDOUT_FILENO);
@@ -419,19 +459,24 @@ int process_command(struct command_t *command, int *pipefd_r) {
 
       assert(!((pipefd_r != NULL) && is_piped));
 
-      if (strcmp(command->name, "uniq") == 0) {
+      if (strcmp(command->name, "uniq") == 0)
+      {
         char buf[BUFSIZ];
         int n_bytes;
         char *words[BUFSIZ];
         int i = 0;
-        while ((n_bytes = read(pipefd_r[0], &buf, sizeof(buf))) > 0) {
+        while ((n_bytes = read(pipefd_r[0], &buf, sizeof(buf))) > 0)
+        {
           words[i++] = buf;
         }
 
-        for (int x = 0; x < BUFSIZ; x++) {
+        for (int x = 0; x < BUFSIZ; x++)
+        {
           int y;
-          for (y = 0; y < BUFSIZ; y++) {
-            if (!strcmp(words[x], words[y])) {
+          for (y = 0; y < BUFSIZ; y++)
+          {
+            if (!strcmp(words[x], words[y]))
+            {
               break;
             }
           }
@@ -441,31 +486,40 @@ int process_command(struct command_t *command, int *pipefd_r) {
 
         char *words_count[BUFSIZ];
 
-        if (command->arg_count > 0) {
+        if (command->arg_count > 0)
+        {
 
           if (!strcmp(command->args[0], "-c") ||
-              !strcmp(command->args[0], "--count")) {
+              !strcmp(command->args[0], "--count"))
+          {
             int i;
 
-            for (i = 0; i < BUFSIZ; i++) {
+            for (i = 0; i < BUFSIZ; i++)
+            {
               int count = 1;
               int j;
-              for (j = 0; j < BUFSIZ; j++) {
-                if (!strcmp(words[i], words[j])) {
+              for (j = 0; j < BUFSIZ; j++)
+              {
+                if (!strcmp(words[i], words[j]))
+                {
                   count++;
                 }
               }
               // printf("%d", count);
-              if (i == j) {
+              if (i == j)
+              {
                 char *num;
-                if (asprintf(&num, "%d", count) == -1) {
+                if (asprintf(&num, "%d", count) == -1)
+                {
                   fprintf(stderr, "Num couldnt be converted!");
                 }
                 words_count[i] = strcat(strcpy(buf, num), words[i]);
               }
             }
-            for (i = 0; i < BUFSIZ; i++) {
+            for (i = 0; i < BUFSIZ; i++)
+            {
               printf("%s\n", words_count[i]);
+              printf("\n");
             }
           }
         }
@@ -483,34 +537,57 @@ int process_command(struct command_t *command, int *pipefd_r) {
     strcat(path1_command, command->name);
     command->args[0] = path1_command;
     int exec1 = execv(path1_command, command->args);
-    if (exec1 == -1) {
+    if (exec1 == -1)
+    {
       char *path2_command = (char *)malloc(
           (strlen(command->name) + strlen(path2) + 1) * sizeof(char));
       strcpy(path2_command, path2);
       strcat(path2_command, command->name);
       command->args[0] = path2_command;
       int exec2 = execv(path2_command, command->args);
-      if (exec2 == -1) {
+      if (exec2 == -1)
+      {
         fprintf(stderr, "couldnt create execution!\n");
         return SUCCESS;
       }
     }
-  } else {
+  }
+  else
+  {
 
     // TODO: implement background processes here
     // wait(0); // wait for child process to finish
     // return SUCCESS;
-    if (is_piped) {
-      printf("next name: %s\n", command->next->name);
+    // pid_t pid_child = -1;
+    if (is_piped)
+    {
+      // wait(NULL);
+      close(pipefd[1]);
       process_command(command->next, pipefd);
+
+      // pid_child = fork();
+      //   if (pid_child == 0)
+      //   {
+      //     printf(" %swe are entering the shell\n", command->name);
+      //     close(pipefd[1]);
+      //     process_command(command->next, pipefd);
+      //     printf("we are exiting the shell %s", command->name);
+      //     exit(0);
+      //   }
     }
 
-    if (!command->background) {
-      //wait(NULL);
-      return SUCCESS;
+    if (!command->background)
+    {
 
-    } else {
-      printf("background process is killed !\n");
+      waitpid(pid, NULL, 0);
+
+      // waitpid(pid_child, NULL, 0);
+
+      return SUCCESS;
+    }
+    else
+    {
+      printf("Background process %s is killed.", command->name);
       return SUCCESS;
     }
   }
