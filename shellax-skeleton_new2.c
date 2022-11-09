@@ -350,15 +350,7 @@ int main()
   printf("\n");
   return 0;
 }
-int is_contains(char **arr, char *str, int arr_size)
-{
-  for (int i = 0; i < arr_size; i++)
-  {
-    if (!strcmp(arr[i], str))
-      return i;
-  }
-  return -1;
-}
+
 int process_command(struct command_t *command, int *pipefd_r)
 {
   int r;
@@ -572,86 +564,7 @@ int process_command(struct command_t *command, int *pipefd_r)
         }
       }
 
-      // for (int x = 0; x < BUFSIZ; x++)
-      // {
-      //   printf("checking for this word %s\n", words[x]);
-      //   int uniq_word_index = is_contains(unique_words, words[x], unique_words_size);
-      //   if (uniq_word_index == -1)
-      //   {
-      //     words_counts[unique_words_size] = 1;
-      //     unique_words[unique_words_size] = words[x];
-      //     unique_words_size++;
-      //   }
-      //   else
-      //   {
-      //     words_counts[uniq_word_index]++;
-      //   }
-      // }
-      // printf("%d\n", command->arg_count);
-      // if (command->arg_count > 1)
-      // {
-
-      //   if (!strcmp(command->args[1], "-c") ||
-      //       !strcmp(command->args[1], "--count"))
-      //   {
-      //     for (int i = 0; i < unique_words_size; i++)
-      //     {
-      //       printf("\t%d %s\n", words_counts[i], unique_words[i]);
-      //     }
-      //   }
-      // }
-      // else
-      // {
-      //   for (int i = 0; i < unique_words_size; i++)
-      //   {
-      //     printf("%s\n", unique_words[i]);
-      //   }
-      // }
-
-      // printf("\n");
-      // return SUCCESS;
-
-      // char *words_count[BUFSIZ];
-      // printf("args is %s\n", command->args[0]);
-
-      // if (command->arg_count > 0)
-      // {
-
-      //   if (!strcmp(command->args[1], "-c") ||
-      //       !strcmp(command->args[1], "--count"))
-      //   {
-      //     int i;
-      //     printf("dasfasfdjl%d\n", i);
-
-      //     for (i = 0; i < BUFSIZ; i++)
-      //     {
-      //       int count = 1;
-      //       int j;
-      //       for (j = 0; j < BUFSIZ; j++)
-      //       {
-      //         if (!strcmp(words[i], words[j]))
-      //         {
-      //           count++;
-      //         }
-      //       }
-      //       // printf("%d", count);
-      //       if (i == j)
-      //       {
-      //         char *num;
-      //         if (asprintf(&num, "%d", count) == -1)
-      //         {
-      //           fprintf(stderr, "Num couldnt be converted!");
-      //         }
-      //         words_count[i] = strcat(strcpy(buf, num), words[i]);
-      //       }
-      //     }
-      //     for (i = 0; i < BUFSIZ; i++)
-      //     {
-      //       printf("words count%s\n", words_count[i]);
-      //       printf("\n");
-      //     }
-      //   }
-      // }
+      
     }
     char *dir_name;
     // printf("size of command arg is %d\n", sizeof(command->args));
