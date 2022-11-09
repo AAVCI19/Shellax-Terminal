@@ -489,10 +489,11 @@ int process_command(struct command_t *command, int *pipefd_r)
 
       pch = strtok(str, "\n");
       char *words[BUFSIZ];
-      int i = 0;
+      memset(words, 0, BUFSIZ);
+      int word_count = 0;
       while (pch != NULL)
       {
-        words[i++] = pch;
+        words[word_count++] = pch;
         // printf("from strtok %s\n", pch);
         pch = strtok(NULL, "\n");
       }
@@ -504,49 +505,58 @@ int process_command(struct command_t *command, int *pipefd_r)
       // }
 
       char *unique_words[BUFSIZ];
+      memset(unique_words, 0, BUFSIZ);
       int unique_words_size = 0;
-      
-      if (command->arg_count > 1)
+
+      for (int i = 0; i < word_count; i++)
       {
-        for (int i = 0; i < BUFSIZ; i++)
+        int j;
+        int count = 0;
+        if (words[i] != NULL)
         {
-          int j;
-          int count = 0;
-          if (words[i] != NULL)
+          for (j = 0; j < word_count; j++)
           {
-            for (j = 0; j < BUFSIZ; j++)
+            if (words[j] != NULL)
             {
-              if (words[j] != NULL)
+              // printf("checking for ith word %s\n", words[i]);
+              // printf("checking for jth word %s\n", words[j]);
+              // printf("for these words strcmp value is %d\n", !strcmp(words[i], words[j]));
+
+              if (!strcmp(words[i], words[j]))
               {
-                // printf("checking for ith word %s\n", words[i]);
-                // printf("checking for jth word %s\n", words[j]);
-                // printf("for these words strcmp value is %d\n", !strcmp(words[i], words[j]));
+                // printf("entering the if statement \n");
 
-                if (!strcmp(words[i], words[j]))
-                {
-                  // printf("entering the if statement \n");
-
-                  break;
-                }
+                break;
               }
             }
-            if (i == j)
-            {
-              printf("From our uniq:\t %s\n", words[i]);
-              unique_words[unique_words_size++] = words[i];
-            }
+          }
+          if (i == j)
+          {
+            unique_words[unique_words_size++] = words[i];
           }
         }
       }
-      if (command->arg_count > 1 && (!strcmp(command->args[1], "-c") || !strcmp(command->args[1], "--count")))
+
+      if (command->arg_count == 2)
+      {
+        for (int i = 0; i < unique_words_size; i++)
+        {
+          if (unique_words[i] != NULL)
+          {
+            printf("From our uniq:\t %s\n", unique_words[i]);
+          }
+        }
+      }
+
+      if (command->arg_count == 3 && (!strcmp(command->args[1], "-c") || !strcmp(command->args[1], "--count")))
       {
 
-        for (int i = 0; i < BUFSIZ; i++)
+        for (int i = 0; i < unique_words_size; i++)
         {
           int count = 0;
           if (unique_words[i] != NULL)
           {
-            for (int j = 0; j < BUFSIZ; j++)
+            for (int j = 0; j < word_count; j++)
             {
               if (words[j] != NULL)
               {
@@ -559,31 +569,24 @@ int process_command(struct command_t *command, int *pipefd_r)
           }
           if (count != 0)
           {
-            printf("From our uniq: \t %d %s\n", count, unique_words[i]);
+            printf("From our uniq count: \t %d %s\n", count, unique_words[i]);
           }
         }
       }
-
-      
     }
-    char *dir_name;
-    // printf("size of command arg is %d\n", sizeof(command->args));
-    // printf("size of command arg[0] is %d\n", sizeof(command->args[0]));
-    // if ((sizeof(command->args) / sizeof(command->args[0])) > 1)
-    // {
-
-    //   dir_name = malloc((strlen(command->args[1]) + 1) * sizeof(char));
-    //   strcpy(dir_name, command->args[1]);
-    //   printf("directory name is%s\n", dir_name);
-    // }
-
-    // DIR* dir = opendir(dir_name);
-    // // printf("%p", dir);
-    // if(errno = ENOENT){
-    //   printf("creating a directory");
-    //   mkdir(dir_name, 0700);
-
-    // }
+    if (command->arg_count > 2)
+    {
+      struct stat st = {0};
+      printf("address is %s\n", command->args[1]);
+      if (stat(command->args[1], &st) == -1)
+        {
+          printf("creating a directory\n");
+          if(mkdir(command->args[1], 0700) == -1){
+            perror("Error");
+          }
+          // printf("directory is created\n");
+        }
+    }
 
     char *path1 = "/usr/bin/";
     char *path2 = "/bin/";
