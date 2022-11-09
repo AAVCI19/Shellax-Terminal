@@ -11,6 +11,8 @@
 #include <sys/wait.h>
 #include <termios.h> // termios, TCSANOW, ECHO, ICANON
 #include <unistd.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 const char *sysname = "shellax";
 
@@ -348,7 +350,15 @@ int main()
   printf("\n");
   return 0;
 }
-
+int is_contains(char **arr, char *str, int arr_size)
+{
+  for (int i = 0; i < arr_size; i++)
+  {
+    if (!strcmp(arr[i], str))
+      return i;
+  }
+  return -1;
+}
 int process_command(struct command_t *command, int *pipefd_r)
 {
   int r;
@@ -458,75 +468,209 @@ int process_command(struct command_t *command, int *pipefd_r)
       close(pipefd[1]);
 
       assert(!((pipefd_r != NULL) && is_piped));
+      // printf("dsfaasfdsadfad\n");
+      // printf("command name is%s\n", command->name);
+      // printf("retrun value is %d\n", strcmp(command->name, "uniq"));
+    }
 
-      if (strcmp(command->name, "uniq") == 0)
+    if (strcmp(command->name, "uniq") == 0)
+    {
+      // printf("dasfasdfasdf\n");
+      char buf[BUFSIZ];
+      memset(buf, 0, BUFSIZ);
+
+      int n_bytes;
+      char *str = malloc(BUFSIZ * sizeof(char));
+      // printf("before while loop\n");
+      // printf("%d\n",read(pipefd_r[0], &buf, sizeof(buf)));
+      // perror("error ");
+      while ((n_bytes = read(STDIN_FILENO, &buf, sizeof(buf))) > 0)
       {
-        char buf[BUFSIZ];
-        int n_bytes;
-        char *words[BUFSIZ];
-        int i = 0;
-        while ((n_bytes = read(pipefd_r[0], &buf, sizeof(buf))) > 0)
-        {
-          words[i++] = buf;
-        }
+        // printf("in while %d\n", n_bytes);
+        strcat(str, buf);
+        memset(buf, 0, BUFSIZ);
+      }
 
-        for (int x = 0; x < BUFSIZ; x++)
+      // printf("str value is %s\n", str);
+      sleep(3);
+      char *pch = NULL;
+
+      pch = strtok(str, "\n");
+      char *words[BUFSIZ];
+      int i = 0;
+      while (pch != NULL)
+      {
+        words[i++] = pch;
+        // printf("from strtok %s\n", pch);
+        pch = strtok(NULL, "\n");
+      }
+
+      // for (int x = 0; x < BUFSIZ; x++){
+      //   if(words[x]!= NULL){
+      //   printf("words in words list%s\n", words[x]);
+      //   }
+      // }
+
+      char *unique_words[BUFSIZ];
+      int unique_words_size = 0;
+      
+      if (command->arg_count > 1)
+      {
+        for (int i = 0; i < BUFSIZ; i++)
         {
-          int y;
-          for (y = 0; y < BUFSIZ; y++)
+          int j;
+          int count = 0;
+          if (words[i] != NULL)
           {
-            if (!strcmp(words[x], words[y]))
+            for (j = 0; j < BUFSIZ; j++)
             {
-              break;
+              if (words[j] != NULL)
+              {
+                // printf("checking for ith word %s\n", words[i]);
+                // printf("checking for jth word %s\n", words[j]);
+                // printf("for these words strcmp value is %d\n", !strcmp(words[i], words[j]));
+
+                if (!strcmp(words[i], words[j]))
+                {
+                  // printf("entering the if statement \n");
+
+                  break;
+                }
+              }
+            }
+            if (i == j)
+            {
+              printf("From our uniq:\t %s\n", words[i]);
+              unique_words[unique_words_size++] = words[i];
             }
           }
-          if (x == y)
-            printf("%s", words[x]);
         }
+      }
+      if (command->arg_count > 1 && (!strcmp(command->args[1], "-c") || !strcmp(command->args[1], "--count")))
+      {
 
-        char *words_count[BUFSIZ];
-
-        if (command->arg_count > 0)
+        for (int i = 0; i < BUFSIZ; i++)
         {
-
-          if (!strcmp(command->args[0], "-c") ||
-              !strcmp(command->args[0], "--count"))
+          int count = 0;
+          if (unique_words[i] != NULL)
           {
-            int i;
-
-            for (i = 0; i < BUFSIZ; i++)
+            for (int j = 0; j < BUFSIZ; j++)
             {
-              int count = 1;
-              int j;
-              for (j = 0; j < BUFSIZ; j++)
+              if (words[j] != NULL)
               {
-                if (!strcmp(words[i], words[j]))
+                if (!strcmp(unique_words[i], words[j]))
                 {
                   count++;
                 }
               }
-              // printf("%d", count);
-              if (i == j)
-              {
-                char *num;
-                if (asprintf(&num, "%d", count) == -1)
-                {
-                  fprintf(stderr, "Num couldnt be converted!");
-                }
-                words_count[i] = strcat(strcpy(buf, num), words[i]);
-              }
-            }
-            for (i = 0; i < BUFSIZ; i++)
-            {
-              printf("%s\n", words_count[i]);
-              printf("\n");
             }
           }
+          if (count != 0)
+          {
+            printf("From our uniq: \t %d %s\n", count, unique_words[i]);
+          }
         }
-        printf("\n");
-        return SUCCESS;
       }
+
+      // for (int x = 0; x < BUFSIZ; x++)
+      // {
+      //   printf("checking for this word %s\n", words[x]);
+      //   int uniq_word_index = is_contains(unique_words, words[x], unique_words_size);
+      //   if (uniq_word_index == -1)
+      //   {
+      //     words_counts[unique_words_size] = 1;
+      //     unique_words[unique_words_size] = words[x];
+      //     unique_words_size++;
+      //   }
+      //   else
+      //   {
+      //     words_counts[uniq_word_index]++;
+      //   }
+      // }
+      // printf("%d\n", command->arg_count);
+      // if (command->arg_count > 1)
+      // {
+
+      //   if (!strcmp(command->args[1], "-c") ||
+      //       !strcmp(command->args[1], "--count"))
+      //   {
+      //     for (int i = 0; i < unique_words_size; i++)
+      //     {
+      //       printf("\t%d %s\n", words_counts[i], unique_words[i]);
+      //     }
+      //   }
+      // }
+      // else
+      // {
+      //   for (int i = 0; i < unique_words_size; i++)
+      //   {
+      //     printf("%s\n", unique_words[i]);
+      //   }
+      // }
+
+      // printf("\n");
+      // return SUCCESS;
+
+      // char *words_count[BUFSIZ];
+      // printf("args is %s\n", command->args[0]);
+
+      // if (command->arg_count > 0)
+      // {
+
+      //   if (!strcmp(command->args[1], "-c") ||
+      //       !strcmp(command->args[1], "--count"))
+      //   {
+      //     int i;
+      //     printf("dasfasfdjl%d\n", i);
+
+      //     for (i = 0; i < BUFSIZ; i++)
+      //     {
+      //       int count = 1;
+      //       int j;
+      //       for (j = 0; j < BUFSIZ; j++)
+      //       {
+      //         if (!strcmp(words[i], words[j]))
+      //         {
+      //           count++;
+      //         }
+      //       }
+      //       // printf("%d", count);
+      //       if (i == j)
+      //       {
+      //         char *num;
+      //         if (asprintf(&num, "%d", count) == -1)
+      //         {
+      //           fprintf(stderr, "Num couldnt be converted!");
+      //         }
+      //         words_count[i] = strcat(strcpy(buf, num), words[i]);
+      //       }
+      //     }
+      //     for (i = 0; i < BUFSIZ; i++)
+      //     {
+      //       printf("words count%s\n", words_count[i]);
+      //       printf("\n");
+      //     }
+      //   }
+      // }
     }
+    char *dir_name;
+    // printf("size of command arg is %d\n", sizeof(command->args));
+    // printf("size of command arg[0] is %d\n", sizeof(command->args[0]));
+    // if ((sizeof(command->args) / sizeof(command->args[0])) > 1)
+    // {
+
+    //   dir_name = malloc((strlen(command->args[1]) + 1) * sizeof(char));
+    //   strcpy(dir_name, command->args[1]);
+    //   printf("directory name is%s\n", dir_name);
+    // }
+
+    // DIR* dir = opendir(dir_name);
+    // // printf("%p", dir);
+    // if(errno = ENOENT){
+    //   printf("creating a directory");
+    //   mkdir(dir_name, 0700);
+
+    // }
 
     char *path1 = "/usr/bin/";
     char *path2 = "/bin/";
