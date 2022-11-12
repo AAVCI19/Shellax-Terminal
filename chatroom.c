@@ -10,115 +10,92 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <dirent.h>
-
-#define BUFFSIZE 512
+#define BUFFSIZ 512
 int main(int argc, char *argv[])
 {
-    int fd, n;
-
-    char buf[BUFFSIZE];
-
     if (argc < 3)
     {
         fprintf(stderr, "usage: %s <roomname> <username>", argv[0]);
         return 1;
     }
-    char pipename[BUFFSIZE];
-    char chatroom[BUFFSIZE];
-    sprintf(pipename, "/tmp/chatroom-%s/%s", argv[1], argv[2]);
+
+    char chatroom[BUFFSIZ];
     sprintf(chatroom, "/tmp/chatroom-%s", argv[1]);
 
-    mkfifo(pipename, O_RDWR | O_CREAT);
-    if (errno == ENOENT)
+    mkdir(chatroom, 0700);
+    
+
+    char pipename[BUFFSIZ];
+    sprintf(pipename, "/tmp/chatroom-%s/%s", argv[1], argv[2]);
+
+    if (mkfifo(pipename, S_IRUSR | S_IWUSR) == -1)
     {
-        if (mkdir(chatroom, 0700) == -1)
-        {
-            perror("Error for creating directory: ");
-            return 1;
-        }
-        mkfifo(pipename, O_RDWR | O_CREAT);
+        perror("Error piping!");
     }
 
-    else if (errno == EEXIST)
-    {
+    pid_t pid_write = fork();
+    int fd_write;
+    char message[BUFFSIZ];
 
-        fprintf(stderr, "already exist!\n");
-        return 1;
-    }
-    int my_fd = open(pipename, O_RDWR);
-    DIR *chatroom_dir = opendir(chatroom);
-    pid_t pid_read = fork();
-    if (pid_read == 0)
+    if (pid_write == 0)
     {
         while (1)
         {
-            printf("Reading messages from the users\n");
-            while ((n = read(my_fd, buf, BUFFSIZE)) > 0)
+            printf("Your Message:");
+            fflush(stdout);
+            fgets(message, BUFFSIZ, stdin);
+
+            struct dirent *dir;
+            DIR *chatroom_dir = opendir(chatroom);
+
+            while ((dir = readdir(chatroom_dir)) != NULL)
             {
 
-                printf("message:");    
-                if (write(STDOUT_FILENO, buf, n) != n)
+                if (!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, ".."))
                 {
-                    exit(1);
+                    continue;
                 }
+
+                char directory[2048];
+
+                sprintf(directory, "%s/%s", chatroom, dir->d_name);
+
+                char new_message[2048];
+                sprintf(new_message, "%s:%s", argv[2], message);
+
+                fd_write = open(directory, O_WRONLY);
+                if ((write(fd_write, new_message, strlen(new_message) + 1)) == -1)
+                {
+                    perror("Error in writing");
+                }
+
+                memset(new_message, 0, 2048);
+                memset(directory, 0, 2048);
+
+                close(fd_write);
             }
+            memset(message, 0, BUFFSIZ);
+            closedir(chatroom_dir);
         }
-        return 0;
     }
-    while (1)
+    else
     {
 
-        struct dirent *dir;
-        printf("Your message:");
-        char message[BUFFSIZE];
-        int message_size = read(STDIN_FILENO, message, BUFFSIZE);
+        int fd_read;
+        char read_message[BUFFSIZ];
 
-        while ((dir = readdir(chatroom_dir)) != NULL)
+        while ((1))
         {
-            pid_t pid_w = fork();
-            if (pid_w == -1)
-                perror("Error forking a new process");
-            else if (pid_w == 0)
-            {
+            fd_read = open(pipename, O_RDONLY);
 
-                printf("%s\n", dir->d_name);
-                int fd;
-                if ((fd = open(dir->d_name, O_RDONLY)) < 0)
-                    perror("Error opening user pipe:");
-                if (write(fd, buf, message_size) != message_size)
-                {
-                    perror("Error for writing:");
-                }
-                return 1;
+            if ((read(fd_read, read_message, sizeof(read_message))) == -1)
+            {
+                perror("Error in reading:");
             }
+            printf("%s", read_message);
+
+            memset(read_message, 0, BUFFSIZ);
+            close(fd_read);
         }
     }
-
-    // if ((fd = open("fifo_x", O_WRONLY)) < 0)
-    //     err("open");
-
-    // while ((n = read(STDIN_FILENO, buf, BUFFSIZE)) > 0)
-    // {
-    //     if (write(fd, buf, strlen(buf)) != strlen(buf))
-    //     {
-    //         err("write");
-    //     }
-    // }
-    // close(fd);
-
-    // int fd, n;
-    // char buf[BUFFSIZE];
-
-    // if ((fd = open("fifo_x", O_RDONLY)) < 0)
-    //     err("open");
-
-    // while ((n = read(fd, buf, BUFFSIZE)) > 0)
-    // {
-
-    //     if (write(STDOUT_FILENO, buf, n) != n)
-    //     {
-    //         exit(1);
-    //     }
-    // }
-    // close(fd);
 }
