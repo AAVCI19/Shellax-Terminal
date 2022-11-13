@@ -574,19 +574,27 @@ int process_command(struct command_t *command, int *pipefd_r)
         }
       }
     }
-    if (command->arg_count > 2)
+
+    if (!strcmp(command->name, "wiseman"))
     {
-      struct stat st = {0};
-      printf("address is %s\n", command->args[1]);
-      if (stat(command->args[1], &st) == -1)
-        {
-          printf("creating a directory\n");
-          if(mkdir(command->args[1], 0700) == -1){
-            perror("Error");
-          }
-          // printf("directory is created\n");
-        }
+      printf("wiseman is working!\n");
+      char *fortune = "/usr/games/fortune";
+      char *espeak = "/usr/bin/espeak";
+      pid_t pid_wiseman = fork();
+      int fd_fortune;
+      if (pid_wiseman == 0)
+      {
+        command->args[0] = fortune;
+        execv(fortune, command->args);
+      }
+      else
+      {
+        waitpid(pid_wiseman, NULL, 0);
+        dup2(fd_fortune, STDOUT_FILENO);
+      }
+      return SUCCESS;
     }
+    // printf("buraya girmememli!");
 
     char *path1 = "/usr/bin/";
     char *path2 = "/bin/";
