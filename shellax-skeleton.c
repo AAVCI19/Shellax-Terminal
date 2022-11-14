@@ -420,7 +420,7 @@ int process_command(struct command_t *command, int *pipefd_r)
         file_name = command->redirects[i];
       }
     }
-    printf("exructing: %s\n", command->name);
+    printf("executing: %s\n", command->name);
     switch (dir_mode)
     {
     case IN:
@@ -577,91 +577,131 @@ int process_command(struct command_t *command, int *pipefd_r)
 
     if (!strcmp(command->name, "wiseman"))
     {
-      printf("wiseman is working!\n");
+
       char *fortune = "/usr/games/fortune";
-      char *espeak = "/usr/bin/espeak";
+
+      char *fortune_arg[2] = {fortune, NULL};
+      int pipefd_e[2];
+      pipe(pipefd_e);
+      char read_message[1024];
       pid_t pid_wiseman = fork();
-      int fd_fortune;
       if (pid_wiseman == 0)
       {
-        command->args[0] = fortune;
-        execv(fortune, command->args);
+        close(pipefd_e[0]);
+        dup2(pipefd_e[1], STDOUT_FILENO);
+        execv(fortune, fortune_arg);
       }
       else
       {
-        waitpid(pid_wiseman, NULL, 0);
-        dup2(fd_fortune, STDOUT_FILENO);
+        wait(NULL);
+        close(pipefd_e[1]);
+        read(pipefd_e[0], read_message, sizeof(read_message));
+        close(pipefd_e[0]);
+        printf("read message is: %s\n", read_message);
+        char *cronfile_name = "fortune_cron";
+        char *crontab = "/usr/bin/crontab";
+        char *crontab_args[3] = {crontab, cronfile_name, NULL};
+        char crontab_cmd[2048];
+
+        if (command->args[1] == NULL)
+        {
+          fprintf(stderr, "Wiseman argument not provided!\n");
+          return UNKNOWN;
+        }
+        read_message[strlen(read_message) - 1] = 0;
+        sprintf(crontab_cmd, "*/%s * * * * DISPLAY=0 espeak \"%s\"\n", command->args[1], read_message);
+        printf("%s\n", crontab_cmd);
+        FILE *file = fopen(cronfile_name, "w");
+        if (file == NULL)
+        {
+          perror("File opening error");
+        }
+        if (fwrite(crontab_cmd, sizeof(char), strlen(crontab_cmd), file) == -1)
+        {
+          perror("Writing error");
+        }
+        fclose(file);
+
+        pid_t pid_cron = fork();
+        if (pid_cron == 0)
+        {
+          execv(crontab, crontab_args);
+        }
+        else
+        {
+          wait(NULL);
+        }
+        remove(cronfile_name);
       }
       return SUCCESS;
-    }
-    // printf("buraya girmememli!");
 
-    char *path1 = "/usr/bin/";
-    char *path2 = "/bin/";
+      char *path1 = "/usr/bin/";
+      char *path2 = "/bin/";
 
-    char *path1_command = (char *)malloc(
-        (strlen(command->name) + strlen(path1) + 1) * sizeof(char));
-    strcpy(path1_command, path1);
-    strcat(path1_command, command->name);
-    command->args[0] = path1_command;
-    int exec1 = execv(path1_command, command->args);
-    if (exec1 == -1)
-    {
-      char *path2_command = (char *)malloc(
-          (strlen(command->name) + strlen(path2) + 1) * sizeof(char));
-      strcpy(path2_command, path2);
-      strcat(path2_command, command->name);
-      command->args[0] = path2_command;
-      int exec2 = execv(path2_command, command->args);
-      if (exec2 == -1)
+      char *path1_command = (char *)malloc(
+          (strlen(command->name) + strlen(path1) + 1) * sizeof(char));
+      strcpy(path1_command, path1);
+      strcat(path1_command, command->name);
+      command->args[0] = path1_command;
+      int exec1 = execv(path1_command, command->args);
+      if (exec1 == -1)
       {
-        fprintf(stderr, "couldnt create execution!\n");
-        return SUCCESS;
+        char *path2_command = (char *)malloc(
+            (strlen(command->name) + strlen(path2) + 1) * sizeof(char));
+        strcpy(path2_command, path2);
+        strcat(path2_command, command->name);
+        command->args[0] = path2_command;
+        int exec2 = execv(path2_command, command->args);
+        if (exec2 == -1)
+        {
+          fprintf(stderr, "couldnt execute!\n");
+          return SUCCESS;
+        }
       }
-    }
-  }
-  else
-  {
-
-    // TODO: implement background processes here
-    // wait(0); // wait for child process to finish
-    // return SUCCESS;
-    // pid_t pid_child = -1;
-    if (is_piped)
-    {
-      // wait(NULL);
-      close(pipefd[1]);
-      process_command(command->next, pipefd);
-
-      // pid_child = fork();
-      //   if (pid_child == 0)
-      //   {
-      //     printf(" %swe are entering the shell\n", command->name);
-      //     close(pipefd[1]);
-      //     process_command(command->next, pipefd);
-      //     printf("we are exiting the shell %s", command->name);
-      //     exit(0);
-      //   }
-    }
-
-    if (!command->background)
-    {
-
-      waitpid(pid, NULL, 0);
-
-      // waitpid(pid_child, NULL, 0);
-
-      return SUCCESS;
     }
     else
     {
-      printf("Background process %s is killed.", command->name);
-      return SUCCESS;
+
+      // TODO: implement background processes here
+      // wait(0); // wait for child process to finish
+      // return SUCCESS;
+      // pid_t pid_child = -1;
+      if (is_piped)
+      {
+        // wait(NULL);
+        close(pipefd[1]);
+        process_command(command->next, pipefd);
+
+        // pid_child = fork();
+        //   if (pid_child == 0)
+        //   {
+        //     printf(" %swe are entering the shell\n", command->name);
+        //     close(pipefd[1]);
+        //     process_command(command->next, pipefd);
+        //     printf("we are exiting the shell %s", command->name);
+        //     exit(0);
+        //   }
+      }
+
+      if (!command->background)
+      {
+
+        waitpid(pid, NULL, 0);
+
+        // waitpid(pid_child, NULL, 0);
+
+        return SUCCESS;
+      }
+      else
+      {
+        printf("Background process %s is killed.", command->name);
+        return SUCCESS;
+      }
     }
+
+    // TODO: your implementation here
+
+    printf("-%s: %s: command not found\n", sysname, command->name);
+    return UNKNOWN;
   }
-
-  // TODO: your implementation here
-
-  printf("-%s: %s: command not found\n", sysname, command->name);
-  return UNKNOWN;
 }
